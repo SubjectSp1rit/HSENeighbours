@@ -97,8 +97,11 @@ async def FI(message: types.Message, state: FSMContext):
     if dormitory_id.isdigit() and room_id.isdigit() and (not fi.isdigit()):
         user_id = cur.execute(f"SELECT 1 FROM users WHERE telegram_id == '{message.from_user.id}'").fetchall()
         if user_id:
+            cur.execute(f"DELETE FROM users WHERE telegram_id == '{message.from_user.id}'")
+            db.commit()
             try:
-                cur.execute(f"UPDATE users SET telegram_id = '{message.from_user.id}', telegram_tag = '{message.from_user.username}', dormitory_id = '{dormitory_id}', room_id = '{room_id}', FI = '{fi}'")
+                cur.execute(
+                    f"INSERT INTO users(telegram_id, telegram_tag, dormitory_id, room_id, FI) VALUES('{message.from_user.id}', '{message.from_user.username}', '{dormitory_id}', '{room_id}', '{fi}')")
                 db.commit()
                 await bot.send_message(message.from_user.id,
                                        'Информация успешно обновлена!',
@@ -164,6 +167,20 @@ async def send_message(message: types.message):
 
         await bot.send_message(message.from_user.id,
                                f'{answer}')
+
+    elif message.text.lower() == 'показать людей, желающих снять квартиру с кем-то':
+        flats = cur.execute(f"SELECT * FROM looking_for_flat").fetchall()
+        answer = ''
+        async def f(l: list):
+            for x in l:
+                yield x
+
+        async for elem in f(flats):
+            answer += elem[3] + f', его/её тг: @{elem[2]}' + '\n'
+            answer += elem[4] + '\n\n'
+
+        await bot.send_message(message.from_user.id,
+                               answer)
 
 
 async def start(message: types.Message):
